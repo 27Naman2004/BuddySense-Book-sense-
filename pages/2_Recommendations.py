@@ -1,14 +1,9 @@
-"""
-pages/2_Recommendations.py
---------------------------
-Smart (rule-based) book recommendations.
-"""
-
 import streamlit as st
 from db import get_collection, ping
 from utils.recommendations import get_recommendations
+from bson import ObjectId
 
-st.set_page_config(page_title="Recommendations | BookBuddy", page_icon="✨", layout="wide")
+st.set_page_config(page_title="Recommendations - BookBuddy", layout="wide")
 
 st.markdown("""
 <style>
@@ -39,17 +34,17 @@ p,li { color:#c9d1d9!important; }
 """, unsafe_allow_html=True)
 
 with st.sidebar:
-    st.markdown("## 📚 BookBuddy")
+    st.markdown("## BookBuddy")
     st.markdown("---")
-    st.page_link("app.py",                      label="Dashboard",        icon="🏠")
-    st.page_link("pages/1_Book_Explorer.py",     label="Book Explorer",    icon="🔍")
-    st.page_link("pages/2_Recommendations.py",   label="Recommendations",  icon="✨")
-    st.page_link("pages/3_Manage_Books.py",      label="Manage Books",     icon="📝")
-    st.page_link("pages/4_MongoDB_Insights.py",  label="MongoDB Insights", icon="📊")
+    st.page_link("app.py",                      label="Dashboard")
+    st.page_link("pages/1_Book_Explorer.py",     label="Book Explorer")
+    st.page_link("pages/2_Recommendations.py",   label="Recommendations")
+    st.page_link("pages/3_Manage_Books.py",      label="Manage Books")
+    st.page_link("pages/4_MongoDB_Insights.py",  label="MongoDB Insights")
     st.markdown("---")
     st.caption("Powered by MongoDB Atlas & Streamlit")
 
-st.markdown("# ✨ Smart Recommendations")
+st.markdown("# Recommendations")
 st.markdown("Select a book and discover similar titles based on genre, author, and tags.")
 st.markdown("---")
 
@@ -60,38 +55,35 @@ if not ping():
 col = get_collection("books")
 
 if col.count_documents({}) == 0:
-    st.info("Database is empty. Run `python import_data.py` first.")
+    st.info("Database is empty. Run python import_data.py first.")
     st.stop()
 
-# ── Book selector ─────────────────────────────────────────────────────────────
 @st.cache_data(ttl=120)
 def get_book_titles():
     return [(d["title"], str(d["_id"]))
             for d in col.find({}, {"title": 1}).sort("title", 1).limit(2000)]
 
 titles_ids = get_book_titles()
-title_map  = {t: i for t, i in titles_ids}
-titles     = [t for t, _ in titles_ids]
+title_map = {t: i for t, i in titles_ids}
+titles = [t for t, _ in titles_ids]
 
 selected_title = st.selectbox("Choose a book to get recommendations for:", titles)
 
 if not selected_title:
     st.stop()
 
-from bson import ObjectId
 book_id = title_map.get(selected_title)
-book    = col.find_one({"_id": ObjectId(book_id)}) if book_id else None
+book = col.find_one({"_id": ObjectId(book_id)}) if book_id else None
 
 if not book:
     st.warning("Book not found. Please refresh the page.")
     st.stop()
 
-# ── Source book info ──────────────────────────────────────────────────────────
 st.markdown("### Selected Book")
-genre  = book.get("genre", "Unknown")
+genre = book.get("genre", "Unknown")
 author = book.get("author", "Unknown")
 rating = book.get("rating")
-r_str  = f"{rating:.2f}" if rating else "N/A"
+r_str = f"{rating:.2f}" if rating else "N/A"
 
 st.markdown(f"""
 <div class="source-card">
@@ -102,39 +94,36 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ── How recommendations work ──────────────────────────────────────────────────
 with st.expander("How do recommendations work?"):
     st.markdown("""
-    BookBuddy uses **three simple rules** to find similar books:
+    BookBuddy uses three simple rules to find similar books:
 
     1. **Genre match** — Books in the same genre are recommended first.
     2. **Author match** — Other books by the same author come next.
-    3. **Tag match** — Books sharing author-name tags fill any remaining slots.
+    3. **Tag match** — Books sharing author tags fill remaining slots.
 
-    These rules are entirely transparent — no hidden algorithms or AI models.
-    Each recommendation shows exactly why it was suggested.
+    Each recommendation displays the matching reason.
     """)
 
-# ── Generate recommendations ──────────────────────────────────────────────────
 st.markdown("### Recommended Books")
 
 with st.spinner("Finding recommendations..."):
     recs = get_recommendations(book, limit=6)
 
 if not recs:
-    st.info("No recommendations found for this book. The dataset may not have enough books in the same genre or by the same author.")
+    st.info("No recommendations found for this book in the current dataset.")
     st.stop()
 
 st.markdown(f"*Found {len(recs)} recommendations*")
 
 cols = st.columns(2)
 for i, rec in enumerate(recs):
-    r_title  = rec.get("title", "Unknown")
+    r_title = rec.get("title", "Unknown")
     r_author = rec.get("author", "Unknown")
-    r_genre  = rec.get("genre", "Unknown")
+    r_genre = rec.get("genre", "Unknown")
     r_rating = rec.get("rating")
-    r_r_str  = f"{r_rating:.2f}" if r_rating else "N/A"
-    reason   = rec.get("reason", "Similar book")
+    r_r_str = f"{r_rating:.2f}" if r_rating else "N/A"
+    reason = rec.get("reason", "Similar book")
 
     with cols[i % 2]:
         st.markdown(f"""
@@ -142,6 +131,6 @@ for i, rec in enumerate(recs):
             <h4>{r_title}</h4>
             <p><b>Author:</b> {r_author}</p>
             <p><b>Genre:</b>  {r_genre} &bull; <b>Rating:</b> {r_r_str}</p>
-            <span class="reason-tag">&#128270; {reason}</span>
+            <span class="reason-tag">Match: {reason}</span>
         </div>
         """, unsafe_allow_html=True)

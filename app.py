@@ -1,26 +1,16 @@
-"""
-app.py  --  BookBuddy Dashboard (Home Page)
--------------------------------------------
-Run with:  streamlit run app.py
-"""
-
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 
-# ── Page config (MUST be first Streamlit call) ────────────────────────────────
 st.set_page_config(
-    page_title="BookBuddy",
-    page_icon="📚",
+    page_title="BookBuddy - Smart Book Discovery",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── Custom CSS ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-/* Sidebar styling */
 [data-testid="stSidebar"] {
     background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
 }
@@ -28,7 +18,6 @@ st.markdown("""
 [data-testid="stSidebar"] .stSelectbox label,
 [data-testid="stSidebar"] .stRadio label { color: #b0b8d0 !important; }
 
-/* Metric cards */
 [data-testid="metric-container"] {
     background: linear-gradient(135deg, #1e2a45 0%, #16213e 100%);
     border: 1px solid #2d4a7a;
@@ -41,20 +30,16 @@ st.markdown("""
     color: #e8f0fe !important; font-size: 2rem !important; font-weight: 700 !important;
 }
 
-/* Page background */
 .stApp { background-color: #0d1117; }
 .block-container { padding-top: 1.5rem !important; }
 
-/* Headings */
 h1, h2, h3 { color: #e8f0fe !important; }
 p, li { color: #c9d1d9 !important; }
 
-/* Section divider */
 .section-divider {
     border: none; border-top: 1px solid #2d4a7a; margin: 1.5rem 0;
 }
 
-/* Book card */
 .book-card {
     background: linear-gradient(135deg, #1e2a45, #16213e);
     border: 1px solid #2d4a7a;
@@ -65,7 +50,6 @@ p, li { color: #c9d1d9 !important; }
 .book-card h4 { color: #7eb8f7 !important; margin: 0 0 4px 0; font-size: 1rem; }
 .book-card p  { color: #8fa8d0 !important; margin: 2px 0; font-size: 0.85rem; }
 
-/* Info banner */
 .info-banner {
     background: linear-gradient(135deg, #1a2d4a, #1e3a5f);
     border-left: 4px solid #4a9eff;
@@ -77,15 +61,12 @@ p, li { color: #c9d1d9 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-
-# ── DB helpers ────────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def _get_collection():
     from db import get_collection, ping
     if not ping():
         return None
     return get_collection("books")
-
 
 def get_col():
     c = _get_collection()
@@ -94,7 +75,6 @@ def get_col():
         st.stop()
     return c
 
-
 @st.cache_data(ttl=60, show_spinner=False)
 def load_stats():
     col = get_col()
@@ -102,14 +82,12 @@ def load_stats():
     if total == 0:
         return None
 
-    # Genre counts
     genre_pipeline = [
         {"$group": {"_id": "$genre", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
     ]
     genres = list(col.aggregate(genre_pipeline))
 
-    # Average rating (only for docs that have a numeric rating)
     rating_pipeline = [
         {"$match": {"rating": {"$ne": None}}},
         {"$group": {"_id": None, "avg": {"$avg": "$rating"}, "count": {"$sum": 1}}},
@@ -118,7 +96,6 @@ def load_stats():
     avg_rating = round(rating_res[0]["avg"], 2) if rating_res else None
     rated_count = rating_res[0]["count"] if rating_res else 0
 
-    # Top-rated books
     top_books = list(
         col.find(
             {"rating": {"$ne": None}},
@@ -135,32 +112,26 @@ def load_stats():
         "top_books": top_books,
     }
 
-
-# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 📚 BookBuddy")
+    st.markdown("## BookBuddy")
     st.markdown("*Smart Book Discovery System*")
     st.markdown("---")
     st.markdown("### Navigation")
-    st.page_link("app.py",                          label="Dashboard",         icon="🏠")
-    st.page_link("pages/1_Book_Explorer.py",         label="Book Explorer",     icon="🔍")
-    st.page_link("pages/2_Recommendations.py",       label="Recommendations",   icon="✨")
-    st.page_link("pages/3_Manage_Books.py",          label="Manage Books",      icon="📝")
-    st.page_link("pages/4_MongoDB_Insights.py",      label="MongoDB Insights",  icon="📊")
+    st.page_link("app.py",                      label="Dashboard")
+    st.page_link("pages/1_Book_Explorer.py",     label="Book Explorer")
+    st.page_link("pages/2_Recommendations.py",   label="Recommendations")
+    st.page_link("pages/3_Manage_Books.py",      label="Manage Books")
+    st.page_link("pages/4_MongoDB_Insights.py",  label="MongoDB Insights")
     st.markdown("---")
     st.caption("Powered by MongoDB Atlas & Streamlit")
 
-
-# ── Header ────────────────────────────────────────────────────────────────────
-st.markdown("# 📚 BookBuddy")
+st.markdown("# BookBuddy")
 st.markdown("#### Smart Book Discovery System")
 st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
 
-# ── Load stats ────────────────────────────────────────────────────────────────
 with st.spinner("Loading dashboard..."):
     stats = load_stats()
 
-# ── Empty state ───────────────────────────────────────────────────────────────
 if stats is None:
     st.markdown("""
     <div class="info-banner">
@@ -174,7 +145,6 @@ python import_data.py --limit 500</pre>
     """, unsafe_allow_html=True)
     st.stop()
 
-# ── Metric cards ──────────────────────────────────────────────────────────────
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Total Books",   f"{stats['total']:,}")
 c2.metric("Genres",        f"{stats['num_genres']}")
@@ -183,7 +153,6 @@ c4.metric("Rated Books",   f"{stats['rated_count']:,}")
 
 st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
 
-# ── Two-column charts ─────────────────────────────────────────────────────────
 left, right = st.columns([3, 2])
 
 with left:
@@ -233,7 +202,6 @@ with right:
 
 st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
 
-# ── Top-rated books ───────────────────────────────────────────────────────────
 st.markdown("### Top Rated Books")
 
 top_df = pd.DataFrame(stats["top_books"])
@@ -243,7 +211,6 @@ if not top_df.empty:
     top_df["Rating"] = top_df["Rating"].apply(lambda r: f"{r:.2f}" if r else "—")
     top_df.index = range(1, len(top_df) + 1)
 
-    # Rating bar chart
     fig_top = go.Figure(go.Bar(
         x=[float(r) if r != "—" else 0 for r in top_df["Rating"]],
         y=top_df["Title"].apply(lambda t: t[:35] + "..." if len(t) > 35 else t),

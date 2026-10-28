@@ -1,16 +1,9 @@
-"""
-pages/1_Book_Explorer.py
-------------------------
-Search and filter books using MongoDB queries.
-"""
-
 import streamlit as st
 import pandas as pd
 from db import get_collection, ping
 
-st.set_page_config(page_title="Book Explorer | BookBuddy", page_icon="🔍", layout="wide")
+st.set_page_config(page_title="Book Explorer - BookBuddy", layout="wide")
 
-# ── Shared CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 [data-testid="stSidebar"] { background: linear-gradient(180deg,#1a1a2e,#16213e,#0f3460); }
@@ -35,24 +28,21 @@ p,li { color:#c9d1d9!important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 📚 BookBuddy")
+    st.markdown("## BookBuddy")
     st.markdown("---")
-    st.page_link("app.py",                      label="Dashboard",        icon="🏠")
-    st.page_link("pages/1_Book_Explorer.py",     label="Book Explorer",    icon="🔍")
-    st.page_link("pages/2_Recommendations.py",   label="Recommendations",  icon="✨")
-    st.page_link("pages/3_Manage_Books.py",      label="Manage Books",     icon="📝")
-    st.page_link("pages/4_MongoDB_Insights.py",  label="MongoDB Insights", icon="📊")
+    st.page_link("app.py",                      label="Dashboard")
+    st.page_link("pages/1_Book_Explorer.py",     label="Book Explorer")
+    st.page_link("pages/2_Recommendations.py",   label="Recommendations")
+    st.page_link("pages/3_Manage_Books.py",      label="Manage Books")
+    st.page_link("pages/4_MongoDB_Insights.py",  label="MongoDB Insights")
     st.markdown("---")
     st.caption("Powered by MongoDB Atlas & Streamlit")
 
-# ── Header ────────────────────────────────────────────────────────────────────
-st.markdown("# 🔍 Book Explorer")
+st.markdown("# Book Explorer")
 st.markdown("Search and filter books from the database.")
 st.markdown("---")
 
-# ── Connection check ──────────────────────────────────────────────────────────
 if not ping():
     st.error("Cannot connect to MongoDB Atlas. Check your .env file.")
     st.stop()
@@ -61,10 +51,9 @@ col = get_collection("books")
 total = col.count_documents({})
 
 if total == 0:
-    st.info("The database is empty. Run `python import_data.py` to populate it first.")
+    st.info("The database is empty. Run python import_data.py to populate it first.")
     st.stop()
 
-# ── Genre list (for filter dropdown) ─────────────────────────────────────────
 @st.cache_data(ttl=120)
 def get_genres():
     pipeline = [
@@ -76,7 +65,6 @@ def get_genres():
 
 genres = get_genres()
 
-# ── Filter controls ───────────────────────────────────────────────────────────
 f1, f2, f3, f4 = st.columns([3, 2, 2, 2])
 
 with f1:
@@ -88,8 +76,7 @@ with f3:
 with f4:
     sort_by = st.selectbox("Sort by", ["Rating (high-low)", "Rating (low-high)", "Title A-Z", "Title Z-A"])
 
-# ── Build MongoDB query ───────────────────────────────────────────────────────
-query: dict = {}
+query = {}
 
 if search_text.strip():
     query["$or"] = [
@@ -111,7 +98,6 @@ sort_map = {
 }
 sort_order = sort_map[sort_by]
 
-# ── Execute query ─────────────────────────────────────────────────────────────
 LIMIT = 50
 with st.spinner("Searching..."):
     docs = list(
@@ -121,26 +107,23 @@ with st.spinner("Searching..."):
     )
     result_count = col.count_documents(query)
 
-# ── Result header ─────────────────────────────────────────────────────────────
 st.markdown(f"**{result_count:,} books found** (showing up to {LIMIT})")
 st.markdown("---")
 
-# ── Empty state ───────────────────────────────────────────────────────────────
 if not docs:
     st.warning("No books matched your filters. Try a different search or lower the minimum rating.")
     st.stop()
 
-# ── Book cards ────────────────────────────────────────────────────────────────
 for doc in docs:
-    title   = doc.get("title", "Unknown")
-    author  = doc.get("author", "Unknown")
-    genre   = doc.get("genre", "—")
-    rating  = doc.get("rating")
-    year    = doc.get("year")
-    desc    = doc.get("description") or ""
+    title = doc.get("title", "Unknown")
+    author = doc.get("author", "Unknown")
+    genre = doc.get("genre", "—")
+    rating = doc.get("rating")
+    year = doc.get("year")
+    desc = doc.get("description") or ""
 
     rating_str = f"{rating:.2f}" if rating is not None else "N/A"
-    year_str   = str(int(year)) if year else ""
+    year_str = str(int(year)) if year else ""
 
     meta = f"{author}"
     if year_str:
@@ -151,7 +134,7 @@ for doc in docs:
         <h4>{title}</h4>
         <p>{meta}</p>
         <span class="badge badge-genre">{genre}</span>
-        <span class="badge badge-rating">&#9733; {rating_str}</span>
+        <span class="badge badge-rating">Rating: {rating_str}</span>
         {"<p style='margin-top:8px;font-size:0.82rem;color:#8fa8d0'>" + desc[:200] + ("..." if len(desc) > 200 else "") + "</p>" if desc else ""}
     </div>
     """, unsafe_allow_html=True)
