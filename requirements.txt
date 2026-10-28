@@ -1,0 +1,6 @@
+pymongo==4.19.0
+dnspython==2.8.0
+python-dotenv==1.2.2
+streamlit==1.45.1
+pandas==2.2.3
+plotly==6.1.0
