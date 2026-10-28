@@ -334,5 +334,4 @@ this scale because Atlas free-tier datasets are small.
 ---
 
 *BookBuddy — B.Tech Computer Science | Intelligent NoSQL Databases Subject*
-#   B u d d y S e n s e - B o o k - s e n s e -  
- 
+#
